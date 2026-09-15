@@ -3,6 +3,9 @@ name: Release
 on:
   push:
     branches: [main]
+  # 手动兑底：用于「先合并了版本 PR、之后才配好 NPM_TOKEN」等场景，
+  # 无需为空提交就能把已 bump 的版本发出去（发布仍受 token 守卫限制）。
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

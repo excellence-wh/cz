@@ -111,7 +111,8 @@ pnpm cli -- --list  # 本地运行生成器
 ### 自动发布（推荐）
 
 `.github/workflows/release.yml` 使用 `changesets/action@v2`（对应 changesets v3）：
-往 `main` 推送后，有 changeset 就开一个「版本 PR」；合并该 PR 即自动 `build` + `publish`。
+推送到 `main` 时，若有 changeset 就开一个「版本 PR」（自动生成 CHANGELOG 并 bump 版本）；
+合并该 PR 即自动 `build` + `publish`。也可用 `workflow_dispatch` 手动触发一次。
 
 首次启用需要三步：
 
@@ -126,6 +127,27 @@ pnpm cli -- --list  # 本地运行生成器
 
 > 未配置 `NPM_TOKEN` 时，workflow 仍会正常跑：`publish-script` 会被置空，
 > 只维护版本 PR，**不会**尝试把 `0.0.0` 发出去。
+
+### 发布顺序（先配 token，再合并版本 PR）
+
+合并版本 PR 会把 changeset 消费掉、版本变成 `0.1.0`。若此时还没配 token，
+就没有东西再触发发布了。因此正确顺序是：
+
+```
+gh secret set NPM_TOKEN        # 1. 先配 token
+# 2. 再合并版本 PR -> 自动发布 0.1.0
+```
+
+顺序搞反了也不要紧：配好 token 后跑一次
+`gh workflow run Release`（`workflow_dispatch`）即可补发。
+
+### 已实测的两个摩擦点
+
+- **版本 PR 的 CI 需要“Approve and run”**：版本 PR 由 `github-actions[bot]` 创建，
+  在 `first_time_contributors` 审批策略下首次会被卡为 `action_required`。
+  批准一次即可。若想彻底免掉，给 `changesets/action` 传一个 PAT 作为 `github-token`。
+- **锁文件不会因为 bump 失效**：`pnpm-lock.yaml` 不记录 workspace 包自身版本
+  （只记 specifier），所以版本 PR 上 `pnpm install --frozen-lockfile` 依然能跑通。
 
 > 想彻底不用长期 token，可改用 npm **trusted publishing**（OIDC）：
 > 首次发布仍需 token，之后在 npmjs 配置 trusted publisher，

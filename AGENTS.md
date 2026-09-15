@@ -78,6 +78,7 @@ scripts/                # repo-config.test.mjs（配置校验）/ e2e-templates.
 - 推送到 `main` 后由 `.github/workflows/release.yml` 自动开版本 PR / 发布（需 `NPM_TOKEN`，未配置时只维护版本 PR）。
   - 用 `changesets/action@v2`（对应 changesets v3），input 名为 `version-script` / `publish-script` 等。
   - npm 认证走 `NODE_AUTH_TOKEN`（setup-node 生成的 `.npmrc` 读它），不要只设 `NPM_TOKEN`。
+  - 顺序：**先 `gh secret set NPM_TOKEN`，再合并版本 PR**；顺序反了用 `gh workflow run Release` 补发。
 - 内部依赖写 `workspace:^`，发布时会被替换为实际版本范围 —— 不要写 `workspace:*`。
 - 根 `.npmrc` 把 `@excellence-wh` 钉到官方 registry（开发机全局默认是镜像）。
 - 改完 `files` / `exports` / `bin` / 依赖协议后，`pnpm test:repo` 会用真实 `pnpm pack` 验证产物。

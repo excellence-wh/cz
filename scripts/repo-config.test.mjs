@@ -180,6 +180,7 @@ describe("npm 发布配置", () => {
     assert.match(workflow, /pull-requests:\s*write/);
     assert.match(workflow, /pnpm version-packages/);
     assert.match(workflow, /pnpm release/);
+    assert.match(workflow, /workflow_dispatch:/, "缺少手动补发入口");
   });
 
   it("release workflow 不传 v2 已改名的 input", async () => {

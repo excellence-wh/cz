@@ -46,7 +46,13 @@
    gh secret set NPM_TOKEN
    ```
 
-### 两个容易踩的坑
+### 发布顺序：先配 token，再合并版本 PR
+
+合并版本 PR 会消费 changeset 并把版本改成 `0.1.0`；若此时还没配 token，
+就再没有东西触发发布了。正确顺序是先 `gh secret set NPM_TOKEN`，再合并版本 PR。
+顺序搞反了也不怕：`gh workflow run Release` 手动补发一次即可。
+
+### 四个容易踩的坑
 
 - **凭证变量名**：`actions/setup-node` 生成的 `.npmrc` 读的是 **`NODE_AUTH_TOKEN`**，
   而 `changesets/action` v2 不会把 `NPM_TOKEN` 映射过去，因此 workflow 里两个都设了。
@@ -54,6 +60,9 @@
   action 只维护版本 PR，不会尝试发布 `0.0.0`。
 - **不要用旧 input 名**：v2 已把 `publish/version/commit/title` 改名为
   `publish-script/version-script/commit-message/pr-title`，传旧名会直接报错。
+- **版本 PR 的 CI 需要批准一次**：版本 PR 由 `github-actions[bot]` 创建，
+  在默认的 `first_time_contributors` 审批策略下会卡在 `action_required`，
+  需要在 PR 上点一次 *Approve and run*。想完全免掉就给 `github-token` 传一个 PAT。
 
 > 发布时会带 npm provenance（`id-token: write` + `NPM_CONFIG_PROVENANCE=true`），
 > 因此**必须**在 GitHub Actions 里发布，本地 `pnpm release` 不带证明。
