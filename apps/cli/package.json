@@ -1,0 +1,58 @@
+{
+  "name": "@excellence-wh/cz",
+  "version": "0.0.0",
+  "description": "AI-first 项目脚手架生成器：创建 react / node / go / ts 项目，并内置面向所有 AI Agent 的开发环境",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "cz": "./dist/index.js",
+    "create-cz": "./dist/index.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "cli",
+    "scaffold",
+    "boilerplate",
+    "generator",
+    "create",
+    "vibe-coding",
+    "ai",
+    "agent",
+    "typescript",
+    "react",
+    "node",
+    "go",
+    "monorepo"
+  ],
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@excellence-wh/core": "workspace:*",
+    "@excellence-wh/templates": "workspace:*",
+    "@clack/prompts": "^1.8.1",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:"
+  }
+}
