@@ -110,15 +110,26 @@ pnpm cli -- --list  # 本地运行生成器
 
 ### 自动发布（推荐）
 
-`.github/workflows/release.yml` 已接入 `changesets/action`：往 `main` 推送后，
-有 changeset 就会开一个「版本 PR」；合并该 PR 即自动 `build` + `publish`（带 npm provenance）。
+`.github/workflows/release.yml` 使用 `changesets/action@v2`（对应 changesets v3）：
+往 `main` 推送后，有 changeset 就开一个「版本 PR」；合并该 PR 即自动 `build` + `publish`。
 
-首次启用需要在仓库里配置：
+首次启用需要三步：
 
-1. 确认 npm 上拥有 `@excellence-wh` 这个 scope（用户名恰为 `excellence-wh`，
-   或建一个同名 org 并把自己加进去）。
-2. 在 npm 生成 **Automation / Granular Access Token**（需 `read+write`，勾选 scope 权限）。
-3. 写入仓库 secret：`gh secret set NPM_TOKEN`。
+1. **确认 scope 归属**：npm 用户名恰为 `excellence-wh`，或建一个同名 org 并把自己加进去。
+2. **开启版本 PR 权限**：仓库 `Settings → Actions → General` 勾选
+   *Allow GitHub Actions to create and approve pull requests*（否则开 PR 会失败）。
+3. **写入 token**：在 npm 生成 Access Token（Automation 或 Granular，读写）并保存：
+
+   ```bash
+   gh secret set NPM_TOKEN
+   ```
+
+> 未配置 `NPM_TOKEN` 时，workflow 仍会正常跑：`publish-script` 会被置空，
+> 只维护版本 PR，**不会**尝试把 `0.0.0` 发出去。
+
+> 想彻底不用长期 token，可改用 npm **trusted publishing**（OIDC）：
+> 首次发布仍需 token，之后在 npmjs 配置 trusted publisher，
+> 并把 workflow 换成 `changesets/action/{version,publish}` 子 action 以收紧权限。
 
 ### 手动发布
 

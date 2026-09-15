@@ -8,38 +8,48 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: write # 提交版本变更 / 打 tag
+  pull-requests: write # 创建版本 PR
+  id-token: write # npm provenance
+
 jobs:
   release:
     name: 版本 PR / 发布
     runs-on: ubuntu-latest
-    permissions:
-      contents: write # 创建 release PR / tag
-      pull-requests: write
-      id-token: write # npm provenance
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: pnpm/action-setup@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
+          # 会生成带 //registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN} 的 .npmrc
           registry-url: https://registry.npmjs.org
 
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: Release
-        uses: changesets/action@v1
+      # changesets/action v2 对应 changesets v3。
+      # 注意：v2 的 input 已改名（publish -> publish-script 等），传旧名会直接报错；
+      # 且它不会把 NPM_TOKEN 映射成 NODE_AUTH_TOKEN，认证必须由 NODE_AUTH_TOKEN 提供。
+      - name: Version PR / Publish
+        uses: changesets/action@v2
         with:
-          version: pnpm version-packages
-          publish: pnpm release
-          commit: "chore: 发布新版本"
-          title: "chore: 发布新版本"
+          version-script: pnpm version-packages
+          # 未配置 NPM_TOKEN 时留空：action 只维护版本 PR，不会尝试发布，
+          # 从而避免「没有凭证就发 0.0.0 然后失败」。
+          publish-script: ${{ secrets.NPM_TOKEN != '' && 'pnpm release' || '' }}
+          commit-message: "chore: 发布新版本"
+          pr-title: "chore: 发布新版本"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

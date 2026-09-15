@@ -113,15 +113,63 @@ describe("npm 发布配置", () => {
     assert.doesNotMatch(npmrc, /_authToken|_auth\b|:_password/, ".npmrc 不得包含凭证");
   });
 
-  it("release workflow 在 main 上用 changesets/action 发布", async () => {
+  it("release workflow 用与 changesets v3 配套的 action 版本", async () => {
     const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
     assert.match(workflow, /branches:\s*\[main\]/);
-    assert.match(workflow, /changesets\/action@v1/);
+    // v1 只兼容 changesets v2（会因 validateChangesetsCliVersion 失败）
+    assert.match(workflow, /changesets\/action@v2/);
     assert.match(workflow, /id-token:\s*write/, "缺少 provenance 所需的 id-token 权限");
-    assert.match(workflow, /secrets\.NPM_TOKEN/, "发布需要 NPM_TOKEN");
-    assert.match(workflow, /GITHUB_TOKEN/, "创建 release PR 需要 GITHUB_TOKEN");
+    assert.match(workflow, /contents:\s*write/);
+    assert.match(workflow, /pull-requests:\s*write/);
     assert.match(workflow, /pnpm version-packages/);
     assert.match(workflow, /pnpm release/);
+  });
+
+  it("release workflow 不传 v2 已改名的 input", async () => {
+    const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
+    // v2 会 throwOnRenamedInputs：publish/version/commit/title 必须用新名
+    for (const old of ["publish", "version", "commit", "title"]) {
+      assert.doesNotMatch(
+        workflow,
+        new RegExp(`^\\s*${old}\\s*:`, "m"),
+        `changesets/action v2 不接受旧 input 名：${old}`,
+      );
+    }
+    assert.match(workflow, /publish-script:/);
+    assert.match(workflow, /version-script:/);
+  });
+
+  it("release workflow 用 NODE_AUTH_TOKEN 提供 npm 凭证", async () => {
+    const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
+    // setup-node 生成的 .npmrc 读的是 NODE_AUTH_TOKEN；
+    // changesets/action v2 不会把 NPM_TOKEN 映射过去
+    assert.match(workflow, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
+  });
+
+  it("release workflow 未配置 token 时不会尝试发布", async () => {
+    const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
+    assert.match(
+      workflow,
+      /publish-script:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*!=\s*''\s*&&\s*'[^']*'\s*\|\|\s*''\s*\}\}/,
+      "缺少 token 守卫：否则每次推 main 都会因拿不到凭证而失败",
+    );
+  });
+
+  it("两个 workflow 都使用当前 Actions 大版本（避免 Node 20 弃用告警）", async () => {
+    for (const file of [".github/workflows/ci.yml", ".github/workflows/release.yml"]) {
+      const workflow = await readFile(abs(file), "utf8");
+      assert.doesNotMatch(workflow, /actions\/checkout@v[1-4]\b/, `${file} 的 checkout 版本过旧`);
+      assert.doesNotMatch(
+        workflow,
+        /actions\/setup-node@v[1-4]\b/,
+        `${file} 的 setup-node 版本过旧`,
+      );
+      assert.doesNotMatch(
+        workflow,
+        /pnpm\/action-setup@v[1-5]\b/,
+        `${file} 的 pnpm/action-setup 版本过旧`,
+      );
+    }
   });
 
   it("release 脚本会先构建再发布", async () => {
