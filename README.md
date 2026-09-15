@@ -81,12 +81,13 @@ go vet ./... && go test ./... && go build ./...   # Go 项目
 
 | 层 | 命令 | 内容 | 是否进 CI |
 | --- | --- | --- | --- |
-| 单元 / 冒烟 | `pnpm test` | `core` 引擎单测（26）+ `cli` 参数与**全模板端到端生成**（9） | ✅ |
-| 仓库配置 | `pnpm test:repo` | workspace 规范、changesets、devcontainer、`config/mcp.json`（7） | ✅ |
+| 单元 / 冒烟 | `pnpm test` | `core` 引擎单测（26）+ `cli` 参数与**全模板端到端生成**（13） | ✅ |
+| 仓库配置 | `pnpm test:repo` | workspace 规范、**真实 `pnpm pack` 发布产物**、changesets、npm 发布配置、devcontainer、`config/mcp.json`（28） | ✅ |
 | 重型端到端 | `pnpm test:e2e` | 每个模板真正 `生成 → install → verify` | 手动 |
 
 ```bash
-pnpm build      # 重型 e2e 依赖 CLI 构建产物
+pnpm build      # 重型 e2e 与 pack 测试依赖构建产物
+pnpm test:repo
 pnpm test:e2e
 ```
 
@@ -107,11 +108,34 @@ pnpm cli -- --list  # 本地运行生成器
 
 可发布包：`@excellence-wh/cz`、`@excellence-wh/core`、`@excellence-wh/templates`。
 
+### 自动发布（推荐）
+
+`.github/workflows/release.yml` 已接入 `changesets/action`：往 `main` 推送后，
+有 changeset 就会开一个「版本 PR」；合并该 PR 即自动 `build` + `publish`（带 npm provenance）。
+
+首次启用需要在仓库里配置：
+
+1. 确认 npm 上拥有 `@excellence-wh` 这个 scope（用户名恰为 `excellence-wh`，
+   或建一个同名 org 并把自己加进去）。
+2. 在 npm 生成 **Automation / Granular Access Token**（需 `read+write`，勾选 scope 权限）。
+3. 写入仓库 secret：`gh secret set NPM_TOKEN`。
+
+### 手动发布
+
 ```bash
-pnpm changeset          # 记录变更
-pnpm version-packages   # 升版本 + 写 CHANGELOG
+pnpm changeset          # 记录变更（选包 → semver → 说明）
+pnpm version-packages   # 升版本 + 写 CHANGELOG + 回写内部依赖范围
 pnpm release            # 构建 + 发布
 ```
+
+> 开发机全局 registry 若指向镜像，发布会被拦。仓库根 `.npmrc` 已把
+> `@excellence-wh` 单独钉到 `registry.npmjs.org`，安装其余依赖仍走镜像。
+
+### 发布产物自检
+
+`pnpm test:repo` 会对每个可发布包真实执行 `pnpm pack` 并解包断言：
+files 白名单生效、入口/bin 存在、**无 `workspace:` 协议残留**、
+不泄漏源码与测试、`publishConfig.access` 为 public。
 
 详见 [`.changeset/README.md`](./.changeset/README.md)。
 

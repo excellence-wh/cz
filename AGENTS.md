@@ -26,8 +26,7 @@
 | Lint / 格式 | `pnpm lint` / `pnpm lint:fix` |
 | 测试（单测 + 模板冒烟） | `pnpm test` |
 | 仓库配置校验 | `pnpm test:repo` |
-| 重型端到端（真装依赖） | `pnpm test:e2e` |
-| 死代码检查 | `pnpm knip` |
+| 重型端到端（真装依赖） | `pnpm test:e2e` || 死代码检查 | `pnpm knip` |
 | **一次性全量校验** | `pnpm verify` |
 | 本地运行生成器 | `pnpm cli -- --help` |
 | 记录变更 / 发布 | `pnpm changeset` / `pnpm release` |
@@ -43,7 +42,7 @@
 | `packages/core` 引擎 | `pnpm --filter @excellence-wh/core test` |
 | `apps/cli` 参数 / 流程 | `pnpm --filter @excellence-wh/cz test`（含全模板生成冒烟） |
 | 模板文件 / `_shared/` | `pnpm --filter @excellence-wh/cz test`（会断言零残留 `{{占位符}}`） |
-| 版本、发布、容器、`config/` | `pnpm test:repo` |
+| 版本、发布、容器、`config/` | `pnpm test:repo`（含真实 `pnpm pack` 产物断言） |
 | 模板依赖升级 / 构建脚本 | `pnpm test:e2e`（真 `install` + `verify`） |
 
 ## 硬性约定
@@ -75,6 +74,11 @@ scripts/                # repo-config.test.mjs（配置校验）/ e2e-templates.
 可发布包：`@excellence-wh/cz`、`@excellence-wh/core`、`@excellence-wh/templates`（其余 `private`）。
 用 changesets 管理版本：`pnpm changeset` → `pnpm version-packages` → `pnpm release`。
 各包用 `files` 白名单决定发布内容，`publishConfig.access` 为 `public`。
+
+- 推送到 `main` 后由 `.github/workflows/release.yml` 自动开版本 PR / 发布（需 `NPM_TOKEN`）。
+- 内部依赖写 `workspace:^`，发布时会被替换为实际版本范围 —— 不要写 `workspace:*`。
+- 根 `.npmrc` 把 `@excellence-wh` 钉到官方 registry（开发机全局默认是镜像）。
+- 改完 `files` / `exports` / `bin` / 依赖协议后，`pnpm test:repo` 会用真实 `pnpm pack` 验证产物。
 
 ## 改动模板时的注意点
 
