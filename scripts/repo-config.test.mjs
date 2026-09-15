@@ -183,6 +183,16 @@ describe("npm 发布配置", () => {
     assert.match(workflow, /workflow_dispatch:/, "缺少手动补发入口");
   });
 
+  it("release workflow 支持可选的 RELEASE_TOKEN 覆盖（免审批）", async () => {
+    const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
+    // 必须回落到 github.token，否则未配置 RELEASE_TOKEN 时会因
+    // github-token 为空而直接抛错
+    assert.match(
+      workflow,
+      /github-token:\s*\$\{\{\s*secrets\.RELEASE_TOKEN\s*\|\|\s*github\.token\s*\}\}/,
+    );
+  });
+
   it("release workflow 不传 v2 已改名的 input", async () => {
     const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
     // v2 会 throwOnRenamedInputs：publish/version/commit/title 必须用新名

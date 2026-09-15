@@ -141,11 +141,18 @@ gh secret set NPM_TOKEN        # 1. 先配 token
 顺序搞反了也不要紧：配好 token 后跑一次
 `gh workflow run Release`（`workflow_dispatch`）即可补发。
 
-### 已实测的两个摩擦点
+### 实测的摩擦点
 
-- **版本 PR 的 CI 需要“Approve and run”**：版本 PR 由 `github-actions[bot]` 创建，
-  在 `first_time_contributors` 审批策略下首次会被卡为 `action_required`。
-  批准一次即可。若想彻底免掉，给 `changesets/action` 传一个 PAT 作为 `github-token`。
+- **版本 PR 的 CI 会卡 `action_required`**：PR 由 `github-actions[bot]` 创建，
+  在默认 `first_time_contributors` 策略下需点一次 *Approve and run*，
+  且分支每次被更新都会重新要批准。想免掉就配 `RELEASE_TOKEN`（fine-grained PAT，
+  `contents: write` + `pull-requests: write`）：
+
+  ```bash
+  gh secret set RELEASE_TOKEN
+  ```
+
+  workflow 会自动优先用它，未配置时回落默认 token。
 - **锁文件不会因为 bump 失效**：`pnpm-lock.yaml` 不记录 workspace 包自身版本
   （只记 specifier），所以版本 PR 上 `pnpm install --frozen-lockfile` 依然能跑通。
 

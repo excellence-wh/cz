@@ -62,7 +62,9 @@
   `publish-script/version-script/commit-message/pr-title`，传旧名会直接报错。
 - **版本 PR 的 CI 需要批准一次**：版本 PR 由 `github-actions[bot]` 创建，
   在默认的 `first_time_contributors` 审批策略下会卡在 `action_required`，
-  需要在 PR 上点一次 *Approve and run*。想完全免掉就给 `github-token` 传一个 PAT。
+  需要在 PR 上点一次 *Approve and run*；分支每次被更新都会重新要批准。
+  想完全免掉：创建 fine-grained PAT（`contents: write` + `pull-requests: write`）
+  并存入 `RELEASE_TOKEN`，workflow 会自动优先使用它。
 
 > 发布时会带 npm provenance（`id-token: write` + `NPM_CONFIG_PROVENANCE=true`），
 > 因此**必须**在 GitHub Actions 里发布，本地 `pnpm release` 不带证明。

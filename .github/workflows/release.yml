@@ -3,12 +3,13 @@ name: Release
 on:
   push:
     branches: [main]
-  # 手动兑底：用于「先合并了版本 PR、之后才配好 NPM_TOKEN」等场景，
+  # 手动兜底：用于「先合并了版本 PR、之后才配好 NPM_TOKEN」等场景，
   # 无需为空提交就能把已 bump 的版本发出去（发布仍受 token 守卫限制）。
   workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
+  # 发布流程不可被打断，否则可能出现「已发一半」的状态
   cancel-in-progress: false
 
 permissions:
@@ -46,6 +47,11 @@ jobs:
       - name: Version PR / Publish
         uses: changesets/action@v2
         with:
+          # 可选：配置 RELEASE_TOKEN（fine-grained PAT，需 contents:write +
+          # pull-requests:write）后，版本 PR 的作者会是你本人，
+          # 从而免掉 github-actions[bot] 因「首次贡献者」被卡的 action_required 审批。
+          # 未配置时自动回落到默认 github.token，行为不变。
+          github-token: ${{ secrets.RELEASE_TOKEN || github.token }}
           version-script: pnpm version-packages
           # 未配置 NPM_TOKEN 时留空：action 只维护版本 PR，不会尝试发布，
           # 从而避免「没有凭证就发 0.0.0 然后失败」。
