@@ -1,0 +1,42 @@
+{
+  "name": "@excellence-wh/monorepo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "AI-first 项目脚手架 monorepo：生成 react / node / go / ts 项目，并内置面向所有 AI Agent 的开发环境",
+  "type": "module",
+  "author": "excellence.wh@outlook.com",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "packageManager": "pnpm@12.4.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "verify": "pnpm lint && turbo run typecheck test build && pnpm test:repo",
+    "test:repo": "node --test \"scripts/**/*.test.mjs\"",
+    "test:e2e": "node scripts/e2e-templates.mjs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish",
+    "knip": "knip",
+    "knip:production": "knip --production",
+    "react-doctor": "pnpm dlx react-doctor@latest --yes",
+    "react-doctor:changed": "pnpm dlx react-doctor@latest --yes --scope changed --verbose",
+    "cli": "node ./apps/cli/dist/index.js"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@changesets/cli": "catalog:",
+    "@types/node": "catalog:",
+    "knip": "catalog:",
+    "turbo": "catalog:",
+    "typescript": "catalog:"
+  }
+}

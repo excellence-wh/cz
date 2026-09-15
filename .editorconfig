@@ -1,0 +1,23 @@
+# 与 biome.json 保持一致：2 空格缩进、LF、末尾换行
+# Biome 只管 JS/TS/JSON/JSONC/CSS，其余文件类型（YAML/MD/SH/TOML…）靠这里统一
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+indent_style = space
+indent_size = 2
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown 行尾双空格是换行语法，不能删
+[*.{md,markdown}]
+trim_trailing_whitespace = false
+
+# Windows 脚本必须 CRLF，与 .gitattributes 对齐
+[*.{bat,cmd}]
+end_of_line = crlf
+
+# Makefile 只认 tab
+[Makefile]
+indent_style = tab

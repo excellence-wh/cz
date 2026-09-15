@@ -1,0 +1,18 @@
+{
+  // React Doctor 配置，schema: https://react.doctor/schema/config.json
+  // 查找规则：从被扫描目录向上找，遇 .git 或 monorepo 根停止 —— 本文件即根配置。
+  // 用 .jsonc 而非 .json：这里要写注释，而 Biome 按 JSONC 解析 .jsonc（.json 里带注释会 lint 失败）。
+  "$schema": "https://react.doctor/schema/config.json",
+
+  // ↓ 全离线：关掉 react.doctor 的全部默认联网行为（本仓库环境不能外联）
+  "noScore": true, // 不调用 score API（连带关闭分享链接与崩溃上报）
+  "share": false, // 不生成分享链接
+  "supplyChain": {
+    "enabled": false // 不做 Socket.dev 依赖供应链检查
+  }
+
+  // 注意：现在不要加 "projects"。
+  // projects 条目无法解析时会在扫描开始前直接报错退出（--project 同理），
+  // 而 pnpm-workspace.yaml 里的 apps/*、packages/* 目录目前还不存在。
+  // 等第一个 React 包落地后再加，例如： "projects": ["apps/*"]
+}

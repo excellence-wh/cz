@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Editors & OS
+!.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Temp / caches
+.cache/
+tmp/
+temp/
+
+# AI agent 工具配置
+# 团队共享的规则/权限要入库；仅忽略本机私有或含 token 的文件。
+.claude/settings.local.json
+.claude/mcp.json
+.claude/todos/
+.claude/cache/
+.claude/statsig/
+.claude/plugins/
+.cladue/
+
+# 生成器冒烟测试产物
+.playground/
+.tmp/
