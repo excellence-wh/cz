@@ -150,9 +150,9 @@ pnpm cli -- --list  # 本地运行生成器
    → 到 <https://www.npmjs.com/settings/wuhan.excellence.technology/tfa>
    开启 2FA（authenticator app 或安全密钥）。**这一步只有账号所有者在浏览器里能做。**
 
-4. **（不需要 token）为三个包预置 trusted publisher**。
+4. **预置 trusted publisher**（免 token 路径，首选）。
 
-   npm CLI 的 `npm trust` 支持在**包还不存在时**就建立信任关系：
+   npm CLI 的 `npm trust` 可以用命令行建立信任关系，不必到网页端逐个包点：
 
    ```bash
    npm trust github @excellence-wh/core      --file release.yml --repo excellence-wh/cz --allow-publish -y
@@ -160,7 +160,13 @@ pnpm cli -- --list  # 本地运行生成器
    npm trust github @excellence-wh/cz        --file release.yml --repo excellence-wh/cz --allow-publish -y
    ```
 
-   每条命令会要求一次 2FA。因此本项目**不存在「首发必须手工 token」的引导问题**。
+   每条命令会要求一次 2FA（`npm trust` 没有 `--otp`，只能交互式完成）。
+   `--allow-publish` 对应 API 里的 `permissions: ["createPackage"]`（即允许直接
+   `npm publish`，可用 `--dry-run --json` 看到请求体）；不带它则只允许 `npm stage publish`。
+
+   > ⚠️ **本条未经验证**：`npm trust` 是否接受「尚未发布过的包」。实测 2FA 检查
+   > 先于包存在性检查（连 `npm trust list express` 这种确定存在的包也返回 403），
+   > 所以在开启 2FA 前无法区分。若它返回 404，请改走下面的 token 引导。
 
 #### 打开发布开关（推荐：OIDC，全程免长期 token）
 
@@ -178,7 +184,7 @@ gh workflow run Release                # 补发已合并的版本（若版本 PR
 
 #### 备选：用 bypass-2FA token 引导
 
-仅当 `npm trust` 拒绝为尚未发布的包建信任（返回 404）时才需要。创建 Granular
+`npm trust` 若拒绝为尚未发布的包建信任，则需要先用 token 首发一次。创建 Granular
 Access Token 时**务必勾选 bypass 2FA** —— 普通 token（含 `npm login` 得到的会话
 token）会被上面那条 403 拒绝：
 
@@ -199,7 +205,7 @@ gh workflow run Release
 就没有东西再触发发布了。正确顺序：
 
 ```
-gh secret set NPM_TOKEN      # 1. 先开开关（或 gh variable set NPM_OIDC --body true）
+gh variable set NPM_OIDC --body true   # 1. 先开开关（或 gh secret set NPM_TOKEN）
 # 2. 再合并版本 PR -> 自动发布 0.1.0
 ```
 
