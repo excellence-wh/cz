@@ -214,13 +214,13 @@ describe("npm 发布配置", () => {
     assert.match(workflow, /NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}/);
   });
 
-  it("release workflow 未配置 token 时不会尝试发布", async () => {
+  it("release workflow 未开开关时不会尝试发布", async () => {
     const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
-    assert.match(
-      workflow,
-      /publish-script:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*!=\s*''\s*&&\s*'[^']*'\s*\|\|\s*''\s*\}\}/,
-      "缺少 token 守卫：否则每次推 main 都会因拿不到凭证而失败",
-    );
+    const line = workflow.split("\n").find((l) => l.includes("publish-script:"));
+    assert.ok(line, "缺少 publish-script");
+    assert.match(line, /secrets\.NPM_TOKEN\s*!=\s*''/, "缺少 token 守卫");
+    assert.match(line, /vars\.NPM_OIDC\s*==\s*'true'/, "切换 OIDC 后必须仍能发布");
+    assert.match(line, /&&\s*'pnpm release'\s*\|\|\s*''/, "守表达式结构不对，未开开关时不会置空");
   });
 
   it("两个 workflow 都使用当前 Actions 大版本（避免 Node 20 弃用告警）", async () => {

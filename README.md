@@ -114,34 +114,75 @@ pnpm cli -- --list  # 本地运行生成器
 推送到 `main` 时，若有 changeset 就开一个「版本 PR」（自动生成 CHANGELOG 并 bump 版本）；
 合并该 PR 即自动 `build` + `publish`。也可用 `workflow_dispatch` 手动触发一次。
 
-首次启用需要三步：
+发布开关是**双模式**的，`publish-script` 仅在满足任一条件时生效：
 
-1. **确认 scope 归属**：npm 用户名恰为 `excellence-wh`，或建一个同名 org 并把自己加进去。
+| 模式 | 开启方式 | 适用阶段 |
+| --- | --- | --- |
+| token | `gh secret set NPM_TOKEN` | 首次发布（引导） |
+| OIDC | `gh variable set NPM_OIDC --body true` | 配好 trusted publisher 后（推荐，免长期 token） |
+
+两者都没开时不发布，只维护版本 PR —— 这样**不会**误发 `0.0.0`。
+
+#### 一次性准备
+
+1. **创建 npm org**：本项目 scope 是 `@excellence-wh`，而 npm 账号
+   `wuhan.excellence.technology` 并不拥有它（实测 `npm org ls excellence-wh` →
+   `Scope not found`）。到 <https://www.npmjs.com/org/create> 建一个名为
+   `excellence-wh` 的 org（公开包免费、数量不限；实测该用户名未被占用）。
 2. **开启版本 PR 权限**：仓库 `Settings → Actions → General` 勾选
-   *Allow GitHub Actions to create and approve pull requests*（否则开 PR 会失败）。
-3. **写入 token**：在 npm 生成 Access Token（Automation 或 Granular，读写）并保存：
+   *Allow GitHub Actions to create and approve pull requests*（本项目已代你打开）。
+3. 首次发布仍需一个 token：包还不存在时无法配置 trusted publisher（引导问题）。
 
-   ```bash
-   gh secret set NPM_TOKEN
-   ```
+#### 引导首次发布（token）
 
-> 未配置 `NPM_TOKEN` 时，workflow 仍会正常跑：`publish-script` 会被置空，
-> 只维护版本 PR，**不会**尝试把 `0.0.0` 发出去。
+```bash
+npm login --registry=https://registry.npmjs.org   # 账号 wuhan.excellence.technology
+gh secret set NPM_TOKEN                            # npm 的 Granular Access Token（读写）
+```
 
-### 发布顺序（先配 token，再合并版本 PR）
+然后按「发布顺序」合并版本 PR。首发完成后建议迁移到 OIDC。
 
-合并版本 PR 会把 changeset 消费掉、版本变成 `0.1.0`。若此时还没配 token，
-就没有东西再触发发布了。因此正确顺序是：
+> 注意：npm 的 2FA-bypass GAT **已不能**用于改包权限 / 建 token 等管理动作，
+> 且官方公告 **2027-01 起将失去直接发布能力**——所以 token 只当引导用，别当长期方案。
+
+#### 迁移到 OIDC（推荐，免长期 token）
+
+前置条件本项目已全部满足：Node 24（>= 22.14.0）、pnpm 12.4.1（内置 OIDC，
+支持 `NPM_ID_TOKEN` 与 `ACTIONS_ID_TOKEN_REQUEST_*`）、workflow 已有 `id-token: write`。
+
+对 `@excellence-wh` 下的三个包，各自在 npmjs 的包设置里配置
+*Trusted Publisher → GitHub Actions*：
+
+| 字段 | 值 |
+| --- | --- |
+| Organization or user | `excellence-wh` |
+| Repository | `cz` |
+| Workflow filename | `release.yml` |
+
+> ⚠️ **2026-09-03 之后新建的 trusted publisher 默认只允许 `npm stage publish`**，
+> 必须**额外勾选允许 `npm publish`**（直接发布），否则 `changeset publish` 会因权限不足失败。
+
+配好后打开开关并删掉 token：
+
+```bash
+gh variable set NPM_OIDC --body true
+gh secret delete NPM_TOKEN        # 确认 OIDC 发布成功后再删
+```
+
+#### 发布顺序（先开开关，再合并版本 PR）
+
+合并版本 PR 会消费 changeset、把版本改成 `0.1.0`。若此时发布开关还没打开，
+就没有东西再触发发布了。正确顺序：
 
 ```
-gh secret set NPM_TOKEN        # 1. 先配 token
+gh secret set NPM_TOKEN      # 1. 先开开关（或 gh variable set NPM_OIDC --body true）
 # 2. 再合并版本 PR -> 自动发布 0.1.0
 ```
 
-顺序搞反了也不要紧：配好 token 后跑一次
+顺序搞反了也不要紧：打开开关后跑一次
 `gh workflow run Release`（`workflow_dispatch`）即可补发。
 
-### 实测的摩擦点
+#### 实测的摩擦点
 
 - **版本 PR 的 CI 会卡 `action_required`**：PR 由 `github-actions[bot]` 创建，
   在默认 `first_time_contributors` 策略下需点一次 *Approve and run*，
@@ -155,10 +196,9 @@ gh secret set NPM_TOKEN        # 1. 先配 token
   workflow 会自动优先用它，未配置时回落默认 token。
 - **锁文件不会因为 bump 失效**：`pnpm-lock.yaml` 不记录 workspace 包自身版本
   （只记 specifier），所以版本 PR 上 `pnpm install --frozen-lockfile` 依然能跑通。
-
-> 想彻底不用长期 token，可改用 npm **trusted publishing**（OIDC）：
-> 首次发布仍需 token，之后在 npmjs 配置 trusted publisher，
-> 并把 workflow 换成 `changesets/action/{version,publish}` 子 action 以收紧权限。
+- **npm 全局 registry 是镜像**：本机 `npm config get registry` 指向 `registry.npmmirror.com`，
+  因此 `npm org` / `npm access` 这类命令要显式加 `--registry=https://registry.npmjs.org`，
+  否则会打到镜像上得到误导性的 404（本项目 `.npmrc` 已把 `@excellence-wh` 钉到官方源）。
 
 ### 手动发布
 

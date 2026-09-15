@@ -3,8 +3,8 @@ name: Release
 on:
   push:
     branches: [main]
-  # 手动兜底：用于「先合并了版本 PR、之后才配好 NPM_TOKEN」等场景，
-  # 无需为空提交就能把已 bump 的版本发出去（发布仍受 token 守卫限制）。
+  # 手动兜底：用于「先合并了版本 PR、之后才打开发布开关」等场景，
+  # 无需为空提交就能把已 bump 的版本发出去（发布仍受开关守卫限制）。
   workflow_dispatch:
 
 concurrency:
@@ -53,9 +53,12 @@ jobs:
           # 未配置时自动回落到默认 github.token，行为不变。
           github-token: ${{ secrets.RELEASE_TOKEN || github.token }}
           version-script: pnpm version-packages
-          # 未配置 NPM_TOKEN 时留空：action 只维护版本 PR，不会尝试发布，
+          # 发布开关（双模式）：
+          #   token 引导 → gh secret set NPM_TOKEN
+          #   OIDC 免 token → gh variable set NPM_OIDC --body true
+          # 两者都没开时留空：action 只维护版本 PR，不会尝试发布，
           # 从而避免「没有凭证就发 0.0.0 然后失败」。
-          publish-script: ${{ secrets.NPM_TOKEN != '' && 'pnpm release' || '' }}
+          publish-script: ${{ (secrets.NPM_TOKEN != '' || vars.NPM_OIDC == 'true') && 'pnpm release' || '' }}
           commit-message: "chore: 发布新版本"
           pr-title: "chore: 发布新版本"
         env:
