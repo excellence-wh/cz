@@ -98,6 +98,40 @@ describe("changesets 配置", () => {
   });
 });
 
+describe("npm 发布配置", () => {
+  it(".npmrc 把 @excellence-wh scope 钉到官方 registry", async () => {
+    const npmrc = await readFile(abs(".npmrc"), "utf8");
+    assert.match(
+      npmrc,
+      /^@excellence-wh:registry=https:\/\/registry\.npmjs\.org\/?$/m,
+      "开发机 registry 默认指向镜像，必须在 .npmrc 里为 @excellence-wh 指定官方源，否则发不出去",
+    );
+  });
+
+  it(".npmrc 不含任何 token", async () => {
+    const npmrc = await readFile(abs(".npmrc"), "utf8");
+    assert.doesNotMatch(npmrc, /_authToken|_auth\b|:_password/, ".npmrc 不得包含凭证");
+  });
+
+  it("release workflow 在 main 上用 changesets/action 发布", async () => {
+    const workflow = await readFile(abs(".github/workflows/release.yml"), "utf8");
+    assert.match(workflow, /branches:\s*\[main\]/);
+    assert.match(workflow, /changesets\/action@v1/);
+    assert.match(workflow, /id-token:\s*write/, "缺少 provenance 所需的 id-token 权限");
+    assert.match(workflow, /secrets\.NPM_TOKEN/, "发布需要 NPM_TOKEN");
+    assert.match(workflow, /GITHUB_TOKEN/, "创建 release PR 需要 GITHUB_TOKEN");
+    assert.match(workflow, /pnpm version-packages/);
+    assert.match(workflow, /pnpm release/);
+  });
+
+  it("release 脚本会先构建再发布", async () => {
+    const pkg = await readJson("package.json");
+    assert.match(pkg.scripts.release, /build/);
+    assert.match(pkg.scripts.release, /changeset publish/);
+    assert.match(pkg.scripts["version-packages"], /changeset version/);
+  });
+});
+
 describe("deploy / devcontainer", () => {
   it("devcontainer.json 指向存在的 Dockerfile", async () => {
     const devcontainer = await readJson(".devcontainer/devcontainer.json");
