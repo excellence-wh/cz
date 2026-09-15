@@ -1,6 +1,6 @@
 {
   "name": "@excellence-wh/cz",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "AI-first 项目脚手架生成器：创建 react / node / go / ts 项目，并内置面向所有 AI Agent 的开发环境",
   "type": "module",
   "license": "MIT",

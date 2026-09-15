@@ -1,6 +1,6 @@
 {
   "name": "@excellence-wh/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "生成引擎：模板发现 / 变量渲染 / 文件落盘 / 后置步骤",
   "type": "module",
   "license": "MIT",
