@@ -1,0 +1,31 @@
+{
+  "name": "@excellence-wh/core",
+  "version": "0.0.0",
+  "description": "生成引擎：模板发现 / 变量渲染 / 文件落盘 / 后置步骤",
+  "type": "module",
+  "license": "MIT",
+  "author": "excellence.wh@outlook.com",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "node --test"
+  }
+}
