@@ -82,7 +82,7 @@ go vet ./... && go test ./... && go build ./...   # Go 项目
 | 层 | 命令 | 内容 | 是否进 CI |
 | --- | --- | --- | --- |
 | 单元 / 冒烟 | `pnpm test` | `core` 引擎单测（26）+ `cli` 参数与**全模板端到端生成**（13） | ✅ |
-| 仓库配置 | `pnpm test:repo` | workspace 规范、**真实 `pnpm pack` 发布产物**、changesets、npm 发布配置、devcontainer、`config/mcp.json`（28） | ✅ |
+| 仓库配置 | `pnpm test:repo` | workspace 规范、**真实 `pnpm pack` 发布产物**、changesets、npm 发布配置、devcontainer、`config/mcp.json`（37） | ✅ |
 | 重型端到端 | `pnpm test:e2e` | 每个模板真正 `生成 → install → verify` | 手动 |
 
 ```bash
@@ -118,7 +118,7 @@ pnpm cli -- --list  # 本地运行生成器
 
 | 模式 | 开启方式 | 适用阶段 |
 | --- | --- | --- |
-| token | `gh secret set NPM_TOKEN` | 首次发布（引导） |
+| token | `gh secret set NPM_TOKEN` | 备选引导路径（见下） |
 | OIDC | `gh variable set NPM_OIDC --body true` | 配好 trusted publisher 后（推荐，免长期 token） |
 
 两者都没开时不发布，只维护版本 PR —— 这样**不会**误发 `0.0.0`。
@@ -129,45 +129,69 @@ pnpm cli -- --list  # 本地运行生成器
    `wuhan.excellence.technology` 并不拥有它（实测 `npm org ls excellence-wh` →
    `Scope not found`）。到 <https://www.npmjs.com/org/create> 建一个名为
    `excellence-wh` 的 org（公开包免费、数量不限；实测该用户名未被占用）。
+   → **已完成**：`npm org ls excellence-wh` 返回 `wuhan.excellence.technology - owner`。
 2. **开启版本 PR 权限**：仓库 `Settings → Actions → General` 勾选
    *Allow GitHub Actions to create and approve pull requests*（本项目已代你打开）。
-3. 首次发布仍需一个 token：包还不存在时无法配置 trusted publisher（引导问题）。
+3. **给 npm 账号开启 2FA（硬性要求，无法绕过）**。
 
-#### 引导首次发布（token）
+   npm 现行规则是 *All packages now require two-factor authentication (2FA) or a
+   granular access token with bypass 2FA enabled*，而且**修改包设置（含配置
+   trusted publisher）同样要求 2FA**。账号 `wuhan.excellence.technology` 当前为
+   `two-factor auth: disabled`，实测两条路都被 403 挡死：
 
-```bash
-npm login --registry=https://registry.npmjs.org   # 账号 wuhan.excellence.technology
-gh secret set NPM_TOKEN                            # npm 的 Granular Access Token（读写）
-```
+   ```text
+   # 发布
+   403 Two-factor authentication or granular access token with bypass 2fa enabled
+       is required to publish packages.
+   # 配置 trusted publisher
+   403 Two-factor authentication is required for this operation
+   ```
 
-然后按「发布顺序」合并版本 PR。首发完成后建议迁移到 OIDC。
+   → 到 <https://www.npmjs.com/settings/wuhan.excellence.technology/tfa>
+   开启 2FA（authenticator app 或安全密钥）。**这一步只有账号所有者在浏览器里能做。**
 
-> 注意：npm 的 2FA-bypass GAT **已不能**用于改包权限 / 建 token 等管理动作，
-> 且官方公告 **2027-01 起将失去直接发布能力**——所以 token 只当引导用，别当长期方案。
+4. **（不需要 token）为三个包预置 trusted publisher**。
 
-#### 迁移到 OIDC（推荐，免长期 token）
+   npm CLI 的 `npm trust` 支持在**包还不存在时**就建立信任关系：
+
+   ```bash
+   npm trust github @excellence-wh/core      --file release.yml --repo excellence-wh/cz --allow-publish -y
+   npm trust github @excellence-wh/templates --file release.yml --repo excellence-wh/cz --allow-publish -y
+   npm trust github @excellence-wh/cz        --file release.yml --repo excellence-wh/cz --allow-publish -y
+   ```
+
+   每条命令会要求一次 2FA。因此本项目**不存在「首发必须手工 token」的引导问题**。
+
+#### 打开发布开关（推荐：OIDC，全程免长期 token）
 
 前置条件本项目已全部满足：Node 24（>= 22.14.0）、pnpm 12.4.1（内置 OIDC，
 支持 `NPM_ID_TOKEN` 与 `ACTIONS_ID_TOKEN_REQUEST_*`）、workflow 已有 `id-token: write`。
 
-对 `@excellence-wh` 下的三个包，各自在 npmjs 的包设置里配置
-*Trusted Publisher → GitHub Actions*：
-
-| 字段 | 值 |
-| --- | --- |
-| Organization or user | `excellence-wh` |
-| Repository | `cz` |
-| Workflow filename | `release.yml` |
+```bash
+gh variable set NPM_OIDC --body true   # 打开开关
+gh workflow run Release                # 补发已合并的版本（若版本 PR 已合并）
+```
 
 > ⚠️ **2026-09-03 之后新建的 trusted publisher 默认只允许 `npm stage publish`**，
-> 必须**额外勾选允许 `npm publish`**（直接发布），否则 `changeset publish` 会因权限不足失败。
+> 所以 `npm trust` 必须带 `--allow-publish`（网页端则要额外勾选 allow `npm publish`），
+> 否则 `changeset publish` 会因权限不足失败。
 
-配好后打开开关并删掉 token：
+#### 备选：用 bypass-2FA token 引导
+
+仅当 `npm trust` 拒绝为尚未发布的包建信任（返回 404）时才需要。创建 Granular
+Access Token 时**务必勾选 bypass 2FA** —— 普通 token（含 `npm login` 得到的会话
+token）会被上面那条 403 拒绝：
 
 ```bash
-gh variable set NPM_OIDC --body true
-gh secret delete NPM_TOKEN        # 确认 OIDC 发布成功后再删
+npm login --registry=https://registry.npmjs.org   # 账号 wuhan.excellence.technology
+gh secret set NPM_TOKEN                            # 带 bypass 2FA 的 GAT
+gh workflow run Release
 ```
+
+首发成功后再执行上面的 `npm trust`，然后 `gh secret delete NPM_TOKEN`。
+
+> 注意：npm 的 2FA-bypass GAT **已不能**用于改包权限 / 建 token 等管理动作，
+> 且官方公告 **2027-01 起将失去直接发布能力**——所以 token 只当引导用，别当长期方案。
 
 #### 发布顺序（先开开关，再合并版本 PR）
 

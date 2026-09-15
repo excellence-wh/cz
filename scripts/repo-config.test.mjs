@@ -246,6 +246,40 @@ describe("npm 发布配置", () => {
     assert.match(pkg.scripts.release, /changeset publish/);
     assert.match(pkg.scripts["version-packages"], /changeset version/);
   });
+
+  it("README 的 npm trust 命令与可发布包集合一致", async () => {
+    const publishable = [];
+    for (const rel of await workspaceManifests()) {
+      const pkg = await readJson(rel);
+      if (pkg.private !== true) publishable.push(pkg.name);
+    }
+
+    const readme = await readFile(abs("README.md"), "utf8");
+    const documented = [...readme.matchAll(/npm trust github\s+(\S+)/g)].map((m) => m[1]);
+
+    // npm 要求发布前先建立信任关系，而 `npm trust` 支持包尚未存在时就配置，
+    // 所以文档里必须逐个包给出命令；漏一个包就会卡在 403。
+    assert.deepEqual(
+      documented.toSorted(),
+      publishable.toSorted(),
+      "README 中 npm trust 的包列表与实际可发布包不一致（新增包后请同步文档）",
+    );
+
+    assert.match(
+      readme,
+      /npm trust github \S+\s+--file release\.yml --repo excellence-wh\/cz --allow-publish/,
+      "npm trust 必须指定 workflow/repo 并带 --allow-publish",
+    );
+  });
+
+  it("README 记录了 2FA 为发布的硬前提", async () => {
+    const readme = await readFile(abs("README.md"), "utf8");
+    // npm 对 publish 与包设置修改都强制 2FA，普通 token 会被 403 拒绝；
+    // 这条限制必须留在文档里，否则会反复重走「用 token 引导」的弯路。
+    assert.match(readme, /two-factor authentication \(2FA\) or a/);
+    assert.match(readme, /granular access token with bypass 2FA/);
+    assert.match(readme, /bypass 2FA/, "需说明 token 必须勾选 bypass 2FA");
+  });
 });
 
 describe("deploy / devcontainer", () => {
