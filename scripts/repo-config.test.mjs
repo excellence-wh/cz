@@ -38,6 +38,16 @@ async function workspaceManifests() {
   return out;
 }
 
+/** 所有 workspace 包的包名。 */
+async function workspacePackageNames() {
+  const names = new Set();
+  for (const rel of await workspaceManifests()) {
+    const pkg = await readJson(rel);
+    names.add(pkg.name);
+  }
+  return names;
+}
+
 describe("workspace 包规范", () => {
   it("每个包的 package.json 合法且符合约定", async () => {
     const manifests = await workspaceManifests();
@@ -95,6 +105,53 @@ describe("changesets 配置", () => {
     assert.ok(config.baseBranch, "缺少 baseBranch");
     assert.ok(config.updateInternalDependencies, "缺少 updateInternalDependencies");
     assert.ok(Array.isArray(config.ignore), "ignore 必须是数组");
+  });
+});
+
+describe("changeset 文件", () => {
+  it("字段合法、引用真实包、且有变更说明", async () => {
+    const dir = abs(".changeset");
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md") && f !== "README.md");
+    const known = await workspacePackageNames();
+
+    for (const file of files) {
+      const content = await readFile(join(dir, file), "utf8");
+      const parsed = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
+      assert.ok(parsed, `${file} 缺少 --- frontmatter ---`);
+
+      const releases = parsed[1]
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const m = line.match(/^"([^"]+)":\s*(patch|minor|major)$/);
+          assert.ok(m, `${file} 的 frontmatter 行不合法：${line}`);
+          return { name: m[1], bump: m[2] };
+        });
+
+      assert.ok(releases.length > 0, `${file} 未声明任何待发布包`);
+      for (const { name } of releases) {
+        assert.ok(known.has(name), `${file} 引用了不存在的包：${name}`);
+      }
+      assert.ok(parsed[2].trim().length > 0, `${file} 缺少变更说明`);
+    }
+  });
+
+  it("私有包不会被写进 changeset", async () => {
+    const dir = abs(".changeset");
+    const files = (await readdir(dir)).filter((f) => f.endsWith(".md") && f !== "README.md");
+    const private_ = new Set();
+    for (const rel of await workspaceManifests()) {
+      const pkg = await readJson(rel);
+      if (pkg.private === true) private_.add(pkg.name);
+    }
+
+    for (const file of files) {
+      const content = await readFile(join(dir, file), "utf8");
+      for (const name of private_) {
+        assert.ok(!content.includes(`"${name}"`), `${file} 不应包含私有包：${name}`);
+      }
+    }
   });
 });
 
