@@ -1,0 +1,26 @@
+{
+  "id": "react-vite",
+  "title": "React SPA (Vite)",
+  "description": "React 19 单页应用：Vite 构建、Zustand 状态管理、Vitest + Testing Library 测试，含 AI 开发环境。",
+  "kind": "react",
+  "tags": ["react", "vite", "spa", "frontend", "zustand", "vitest"],
+  "install": true,
+  "packageManager": "pnpm",
+  "hints": [
+    "开发：`pnpm dev`（默认 http://localhost:5173）",
+    "状态管理已接入 Zustand，见 `src/store.ts`",
+    "`pnpm verify` 一次性完成 lint + typecheck + test + build"
+  ],
+  "variables": {
+    "stack": "React 19 + Vite 8 + Zustand 5（单页应用，TypeScript）",
+    "packageManager": "pnpm",
+    "installCommand": "pnpm install",
+    "devCommand": "pnpm dev",
+    "buildCommand": "pnpm build",
+    "typecheckCommand": "pnpm typecheck",
+    "lintCommand": "pnpm lint",
+    "testCommand": "pnpm test",
+    "runCommand": "pnpm preview",
+    "verifyCommand": "pnpm verify"
+  }
+}

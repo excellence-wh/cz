@@ -1,0 +1,25 @@
+{
+  "id": "ts-cli",
+  "title": "TypeScript CLI",
+  "description": "命令行工具：Node.js + TypeScript（ESM），零运行时依赖，含构建/类型检查/测试/格式化与 AI 开发环境。",
+  "kind": "ts",
+  "tags": ["typescript", "node", "cli", "library", "esm"],
+  "install": true,
+  "packageManager": "pnpm",
+  "hints": [
+    "运行 `pnpm dev` 进入 watch 模式",
+    "运行 `pnpm verify` 一次性完成 lint + typecheck + test + build"
+  ],
+  "variables": {
+    "stack": "TypeScript 7 / Node.js >=20.19（ESM，零运行时依赖）",
+    "packageManager": "pnpm",
+    "installCommand": "pnpm install",
+    "devCommand": "pnpm dev",
+    "buildCommand": "pnpm build",
+    "typecheckCommand": "pnpm typecheck",
+    "lintCommand": "pnpm lint",
+    "testCommand": "pnpm test",
+    "runCommand": "node dist/index.js",
+    "verifyCommand": "pnpm verify"
+  }
+}

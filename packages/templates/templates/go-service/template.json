@@ -1,0 +1,24 @@
+{
+  "id": "go-service",
+  "title": "Go HTTP Service (stdlib)",
+  "description": "Go HTTP 服务：基于标准库 net/http，零第三方依赖，含优雅关闭、路由、httptest 测试与 AI 开发环境。",
+  "kind": "go",
+  "tags": ["go", "http", "net/http", "service", "api", "backend"],
+  "install": false,
+  "hints": [
+    "启动：`go run ./cmd/server`，默认监听 :8080（用 ADDR 环境变量覆盖）",
+    "`go vet ./... && go test ./... && go build ./...` 一次性校验"
+  ],
+  "variables": {
+    "stack": "Go 1.27（标准库 net/http，无第三方依赖）",
+    "packageManager": "go modules",
+    "installCommand": "go mod download",
+    "devCommand": "go run ./cmd/server",
+    "buildCommand": "go build -o bin/server ./cmd/server",
+    "typecheckCommand": "go vet ./...",
+    "lintCommand": "gofmt -l .",
+    "testCommand": "go test ./...",
+    "runCommand": "./bin/server",
+    "verifyCommand": "go vet ./... && go test ./... && go build ./..."
+  }
+}

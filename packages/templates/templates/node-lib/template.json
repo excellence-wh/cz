@@ -1,0 +1,25 @@
+{
+  "id": "node-lib",
+  "title": "Node Library",
+  "description": "可发布的 TypeScript 库：rolldown 打包出 ESM + CJS 双格式，tsc 生成类型声明，含测试与 AI 开发环境。",
+  "kind": "node",
+  "tags": ["typescript", "node", "library", "rolldown", "esm", "cjs"],
+  "install": true,
+  "packageManager": "pnpm",
+  "hints": [
+    "产物：dist/index.js（ESM）、dist/index.cjs（CJS）、dist/index.d.ts",
+    "运行 `pnpm verify` 一次性完成 lint + typecheck + test + build"
+  ],
+  "variables": {
+    "stack": "TypeScript 7 / Node.js >=20.19（rolldown 打包，ESM + CJS）",
+    "packageManager": "pnpm",
+    "installCommand": "pnpm install",
+    "devCommand": "pnpm dev",
+    "buildCommand": "pnpm build",
+    "typecheckCommand": "pnpm typecheck",
+    "lintCommand": "pnpm lint",
+    "testCommand": "pnpm test",
+    "runCommand": "node -e \"import('./dist/index.js').then(m => console.log(m))\"",
+    "verifyCommand": "pnpm verify"
+  }
+}

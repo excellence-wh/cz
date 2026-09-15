@@ -1,0 +1,24 @@
+{
+  "id": "go-gin",
+  "title": "Go HTTP Service (Gin)",
+  "description": "Go HTTP 服务：基于 Gin 框架，含中间件、路由、httptest 测试与 AI 开发环境。",
+  "kind": "go",
+  "tags": ["go", "gin", "http", "service", "api", "backend", "framework"],
+  "install": false,
+  "hints": [
+    "启动：`go run ./cmd/server`，默认监听 :8080（用 ADDR 环境变量覆盖）",
+    "依赖已锁定（go.sum 随模板提供），`go mod download` 后即可直接构建"
+  ],
+  "variables": {
+    "stack": "Go 1.27 + Gin v1.12（Web 框架）",
+    "packageManager": "go modules",
+    "installCommand": "go mod download",
+    "devCommand": "go run ./cmd/server",
+    "buildCommand": "go build -o bin/server ./cmd/server",
+    "typecheckCommand": "go vet ./...",
+    "lintCommand": "gofmt -l .",
+    "testCommand": "go test ./...",
+    "runCommand": "./bin/server",
+    "verifyCommand": "go vet ./... && go test ./... && go build ./..."
+  }
+}

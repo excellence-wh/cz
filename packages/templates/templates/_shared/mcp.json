@@ -1,0 +1,5 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schema/servers.json",
+  "//": "MCP server 配置。默认留空，按需添加。示例：filesystem / git / fetch 等。",
+  "mcpServers": {}
+}

@@ -1,0 +1,26 @@
+{
+  "id": "react-next",
+  "title": "React Fullstack (Next.js)",
+  "description": "Next.js 16 App Router 全栈应用：React 19 + Zustand + Vitest，含 AI 开发环境。",
+  "kind": "react",
+  "tags": ["react", "next", "nextjs", "app-router", "fullstack", "zustand"],
+  "install": true,
+  "packageManager": "pnpm",
+  "hints": [
+    "开发：`pnpm dev`（默认 http://localhost:3000）",
+    "状态管理已接入 Zustand，见 `lib/store.ts`（客户端组件用 'use client'）",
+    "`pnpm verify` 一次性完成 lint + typecheck + test + build"
+  ],
+  "variables": {
+    "stack": "Next.js 16（App Router）+ React 19 + Zustand 5（全栈，TypeScript）",
+    "packageManager": "pnpm",
+    "installCommand": "pnpm install",
+    "devCommand": "pnpm dev",
+    "buildCommand": "pnpm build",
+    "typecheckCommand": "pnpm typecheck",
+    "lintCommand": "pnpm lint",
+    "testCommand": "pnpm test",
+    "runCommand": "pnpm start",
+    "verifyCommand": "pnpm verify"
+  }
+}

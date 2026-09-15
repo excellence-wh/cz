@@ -1,0 +1,10 @@
+# Windsurf 规则
+# 唯一事实源是仓库根目录的 AGENTS.md，请先完整阅读。
+
+技术栈：{{stack}}
+包管理器：{{packageManager}}
+
+- 改完代码必须运行 `{{verifyCommand}}` 并通过
+- 禁止用 --no-verify / @ts-ignore / eslint-disable 绕过检查
+- 架构决策写入 docs/adr/
+- 不要把密钥或 .env 内容写进代码

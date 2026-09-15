@@ -1,0 +1,16 @@
+---
+description: 项目级规则，始终生效
+alwaysApply: true
+---
+
+# {{title}} — 项目规则
+
+**规则以仓库根目录的 `AGENTS.md` 为唯一事实源，请先阅读它。**
+
+摘要（完整内容见 `AGENTS.md`）：
+
+- 技术栈：{{stack}}；包管理器：{{packageManager}}
+- 改完代码必须跑 `{{verifyCommand}}`，全绿才算完成
+- 禁止用 `--no-verify` / `@ts-ignore` / `eslint-disable` 绕过护栏
+- 架构决策写入 `docs/adr/`
+- 不要把密钥/.env 写进代码或提交

@@ -1,0 +1,8 @@
+# Cline 规则
+# 唯一事实源：仓库根目录 AGENTS.md。请先阅读它。
+
+- 技术栈：{{stack}}；包管理器：{{packageManager}}
+- 每次改动后运行 `{{verifyCommand}}` 并确保全绿
+- 不要用 --no-verify / @ts-ignore / eslint-disable 绕过护栏
+- 架构决策记录到 docs/adr/
+- 绝不提交密钥或 .env

@@ -1,0 +1,10 @@
+# Aider 配置
+# 规则唯一事实源：AGENTS.md
+read:
+  - AGENTS.md
+  - CONVENTIONS.md
+
+auto-commits: false
+lint-cmd:
+  - "{{lintCommand}}"
+test-cmd: "{{testCommand}}"
