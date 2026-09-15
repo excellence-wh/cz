@@ -47,8 +47,8 @@
     "test": "node --test"
   },
   "dependencies": {
-    "@excellence-wh/core": "workspace:*",
-    "@excellence-wh/templates": "workspace:*",
+    "@excellence-wh/core": "workspace:^",
+    "@excellence-wh/templates": "workspace:^",
     "@clack/prompts": "^1.8.1",
     "picocolors": "^1.1.1"
   },
