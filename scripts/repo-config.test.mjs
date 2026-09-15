@@ -1,0 +1,130 @@
+// @ts-check
+import assert from "node:assert/strict";
+import { readdir, readFile, stat } from "node:fs/promises";
+import { join } from "node:path";
+import { describe, it } from "node:test";
+import { fileURLToPath } from "node:url";
+
+const ROOT = fileURLToPath(new URL("..", import.meta.url));
+
+/** @param {string} rel */
+const abs = (rel) => join(ROOT, rel);
+
+/** @param {string} rel */
+async function readJson(rel) {
+  return JSON.parse(await readFile(abs(rel), "utf8"));
+}
+
+async function exists(rel) {
+  try {
+    await stat(abs(rel));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** 收集所有 workspace 的 package.json 相对路径。 */
+async function workspaceManifests() {
+  const out = [];
+  for (const group of ["apps", "packages"]) {
+    const entries = await readdir(abs(group), { withFileTypes: true }).catch(() => []);
+    for (const entry of entries) {
+      if (!entry.isDirectory()) continue;
+      const rel = `${group}/${entry.name}/package.json`;
+      if (await exists(rel)) out.push(rel);
+    }
+  }
+  return out;
+}
+
+describe("workspace 包规范", () => {
+  it("每个包的 package.json 合法且符合约定", async () => {
+    const manifests = await workspaceManifests();
+    assert.ok(manifests.length >= 3, `只发现 ${manifests.length} 个 workspace 包`);
+
+    for (const rel of manifests) {
+      const pkg = await readJson(rel);
+      assert.match(pkg.name, /^@excellence-wh\//, `${rel} 的 name 未使用 @excellence-wh 作用域`);
+      assert.ok(pkg.version, `${rel} 缺少 version`);
+      assert.equal(pkg.type, "module", `${rel} 必须是 ESM（type: module）`);
+      assert.ok(pkg.engines?.node, `${rel} 缺少 engines.node`);
+      assert.ok(pkg.scripts?.build, `${rel} 缺少 build 脚本`);
+      assert.ok(pkg.scripts?.typecheck, `${rel} 缺少 typecheck 脚本`);
+    }
+  });
+
+  it("可发布包必须 public 且带上 files / license", async () => {
+    const manifests = await workspaceManifests();
+    const publishable = [];
+
+    for (const rel of manifests) {
+      const pkg = await readJson(rel);
+      if (pkg.private === true) continue;
+      publishable.push(pkg.name);
+      assert.equal(
+        pkg.publishConfig?.access,
+        "public",
+        `${pkg.name} 的 publishConfig.access 必须为 public`,
+      );
+      assert.ok(Array.isArray(pkg.files) && pkg.files.length > 0, `${pkg.name} 缺少 files 字段`);
+      assert.ok(pkg.license, `${pkg.name} 缺少 license`);
+    }
+
+    assert.deepEqual(publishable.sort(), [
+      "@excellence-wh/core",
+      "@excellence-wh/cz",
+      "@excellence-wh/templates",
+    ]);
+  });
+
+  it("CLI 包暴露 cz / create-cz 两个 bin", async () => {
+    const pkg = await readJson("apps/cli/package.json");
+    assert.ok(pkg.bin?.cz, "缺少 bin.cz");
+    assert.ok(pkg.bin?.["create-cz"], "缺少 bin.create-cz");
+    assert.equal(pkg.bin.cz, pkg.bin["create-cz"]);
+    assert.match(pkg.bin.cz, /^\.\/dist\//);
+  });
+});
+
+describe("changesets 配置", () => {
+  it(".changeset/config.json 合法且关键字段正确", async () => {
+    const config = await readJson(".changeset/config.json");
+    assert.equal(config.access, "public");
+    assert.equal(config.changelog, "@changesets/cli/changelog");
+    assert.ok(config.baseBranch, "缺少 baseBranch");
+    assert.ok(config.updateInternalDependencies, "缺少 updateInternalDependencies");
+    assert.ok(Array.isArray(config.ignore), "ignore 必须是数组");
+  });
+});
+
+describe("deploy / devcontainer", () => {
+  it("devcontainer.json 指向存在的 Dockerfile", async () => {
+    const devcontainer = await readJson(".devcontainer/devcontainer.json");
+    const dockerfile = devcontainer.build?.dockerfile;
+    assert.ok(dockerfile, "devcontainer.json 缺少 build.dockerfile");
+
+    // dockerfile 路径相对于 .devcontainer/ 解析
+    assert.ok(await exists(join(".devcontainer", dockerfile)), `Dockerfile 不存在：${dockerfile}`);
+  });
+
+  it("Dockerfile 同时安装 Node 与 Go", async () => {
+    const dockerfile = await readFile(abs("deploy/devcontainer/Dockerfile"), "utf8");
+    assert.match(dockerfile, /nodesource|nodejs/i, "Dockerfile 未安装 Node");
+    assert.match(dockerfile, /go\.dev\/dl|golang/i, "Dockerfile 未安装 Go");
+  });
+});
+
+describe("config/mcp.json", () => {
+  it("是合法的 MCP 服务器清单", async () => {
+    const mcp = await readJson("config/mcp.json");
+    assert.equal(typeof mcp.mcpServers, "object");
+    const servers = Object.entries(mcp.mcpServers);
+    assert.ok(servers.length > 0, "mcpServers 为空");
+
+    for (const [name, server] of servers) {
+      assert.equal(typeof server.command, "string", `${name} 缺少 command`);
+      assert.ok(Array.isArray(server.args), `${name} 的 args 必须是数组`);
+    }
+  });
+});
