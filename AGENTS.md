@@ -81,7 +81,14 @@ scripts/                # repo-config.test.mjs（配置校验）/ e2e-templates.
   - 顺序：**先 `gh secret set NPM_TOKEN`，再合并版本 PR**；顺序反了用 `gh workflow run Release` 补发。
   - 发布开关是双模式：`NPM_TOKEN`（secret）或 `NPM_OIDC`（variable，trusted publishing）。
     官方公告 2FA-bypass token 将于 2027-01 失去直接发布能力，最终应付诸 OIDC。
-  - 本机 npm 全局 registry 是 npmmirror，`npm org` / `npm access` 需显式 `--registry=https://registry.npmjs.org`。
+  - **首次发布必须先本地引导**：trusted publisher 要求包已存在（*"Package must exist"*），
+    所以顺序是「本地 `pnpm release` 首发 → `npm trust github` 建信任 → `gh variable set NPM_OIDC`」，
+    详见 [README 的「首次发布（引导）」](./README.md#首次发布引导本地首发--建信任--开-oidc)。
+  - ⚠️ npm 会把**权限/账号状态错误伪装成 `404 Not found`**（含 72 小时安全冻结期）。
+    排查先看响应头里的 `npm-notice`，别猜配置 —— 详见
+    [README 的「故障排查」](./README.md#故障排查发布授权返回误导性的-404--403)。
+  - 本机 npm 全局 registry 是 npmmirror，`npm org` / `npm access` 需显式 `--registry=https://registry.npmjs.org`；
+    `npm publish` 的项目配置根是最近的 `package.json`，在 `packages/*` 里直接跑不会读仓库根 `.npmrc`。
 - 内部依赖写 `workspace:^`，发布时会被替换为实际版本范围 —— 不要写 `workspace:*`。
 - 根 `.npmrc` 把 `@excellence-wh` 钉到官方 registry（开发机全局默认是镜像）。
 - 改完 `files` / `exports` / `bin` / 依赖协议后，`pnpm test:repo` 会用真实 `pnpm pack` 验证产物。

@@ -255,10 +255,14 @@ describe("npm 发布配置", () => {
     }
 
     const readme = await readFile(abs("README.md"), "utf8");
-    const documented = [...readme.matchAll(/npm trust github\s+(\S+)/g)].map((m) => m[1]);
+    // README 里会在多处（首次引导 / 打开发布开关 / 故障排查）列出这三个包，
+    // 所以先去重再比对，断言的是「集合一致」而不是「出现次数」。
+    const documented = [
+      ...new Set([...readme.matchAll(/npm trust github\s+(\S+)/g)].map((m) => m[1])),
+    ];
 
-    // npm 要求发布前先建立信任关系，而 `npm trust` 支持包尚未存在时就配置，
-    // 所以文档里必须逐个包给出命令；漏一个包就会卡在 403。
+    // trusted publisher 要求包必须已存在（官方文档 "Package must exist"），
+    // 所以文档必须把三个包都列全 —— 漏一个包，那个包就只能继续手动发。
     assert.deepEqual(
       documented.toSorted(),
       publishable.toSorted(),

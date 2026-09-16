@@ -136,8 +136,7 @@ pnpm cli -- --list  # 本地运行生成器
 
    npm 现行规则是 *All packages now require two-factor authentication (2FA) or a
    granular access token with bypass 2FA enabled*，而且**修改包设置（含配置
-   trusted publisher）同样要求 2FA**。账号 `wuhan.excellence.technology` 当前为
-   `two-factor auth: disabled`，实测两条路都被 403 挡死：
+   trusted publisher）同样要求 2FA**。没开 2FA 时两条路分别被挡：
 
    ```text
    # 发布
@@ -148,7 +147,15 @@ pnpm cli -- --list  # 本地运行生成器
    ```
 
    → 到 <https://www.npmjs.com/settings/wuhan.excellence.technology/tfa>
-   开启 2FA（authenticator app 或安全密钥）。**这一步只有账号所有者在浏览器里能做。**
+   开启 2FA。**这一步只有账号所有者在浏览器里能做。**
+   → **已完成**：账号现为 `tfa.mode: auth-and-writes`（可访问
+   `GET https://registry.npmjs.org/-/npm/v1/user` 确认），方式是安全密钥 + Windows Hello PIN。
+
+   > ⚠️ npm **已不再提供 authenticator app（TOTP）** 作为新配置的 2FA 方式，只能选
+   > 安全密钥 —— 所以命令行拿不到 6 位验证码。`--otp` 只接受 web 2FA 流程
+   > `doneUrl` 返回的 **16 位 token**，而且它**一次性**（一次验证只能完成一次写操作）。
+   > `npm login`（web 登录）不受影响，会直接在 `~/.npmrc` 写入
+   > `//registry.npmjs.org/:_authToken`。
 
 4. **预置 trusted publisher**（免 token 路径，首选）。
 
@@ -164,9 +171,13 @@ pnpm cli -- --list  # 本地运行生成器
    `--allow-publish` 对应 API 里的 `permissions: ["createPackage"]`（即允许直接
    `npm publish`，可用 `--dry-run --json` 看到请求体）；不带它则只允许 `npm stage publish`。
 
-   > ⚠️ **本条未经验证**：`npm trust` 是否接受「尚未发布过的包」。实测 2FA 检查
-   > 先于包存在性检查（连 `npm trust list express` 这种确定存在的包也返回 403），
-   > 所以在开启 2FA 前无法区分。若它返回 404，请改走下面的 token 引导。
+   > ⚠️ **必须先发布、后建信任**：官方文档 Prerequisites 明确写了 *"Package must
+   > exist: The package you're configuring must already exist on the npm registry."*
+   > —— 对尚未存在的包执行 `npm trust` 只会得到 `404 … Package not found`。
+   > 所以顺序是：**先用交互式 2FA 发布一次 `0.1.0`，再 `npm trust`**。
+   >
+   > 💡 首次 `npm trust` 的 2FA 页面上会出现 *"skip two-factor authentication for the
+   > next 5 minutes"*，勾上后三个包可以共用一次验证，省掉三次浏览器往返。
 
 #### 打开发布开关（推荐：OIDC，全程免长期 token）
 
@@ -199,7 +210,25 @@ gh workflow run Release
 > 注意：npm 的 2FA-bypass GAT **已不能**用于改包权限 / 建 token 等管理动作，
 > 且官方公告 **2027-01 起将失去直接发布能力**——所以 token 只当引导用，别当长期方案。
 
-#### 发布顺序（先开开关，再合并版本 PR）
+#### 首次发布（引导）：本地首发 → 建信任 → 开 OIDC
+
+这里有个死锁：**trusted publisher 要求包已存在**，而包得先发一次。所以首次
+不能全自动，要走一次交互式引导：
+
+```bash
+# 1. 本地交互式首发 0.1.0（会弹浏览器验证，需 TTY）
+pnpm release
+
+# 2. 包已存在，现在可以建信任了（首次 2FA 时勾 skip 5 分钟，三个包共用一次验证）
+npm trust github @excellence-wh/core      --file release.yml --repo excellence-wh/cz --allow-publish -y
+npm trust github @excellence-wh/templates --file release.yml --repo excellence-wh/cz --allow-publish -y
+npm trust github @excellence-wh/cz        --file release.yml --repo excellence-wh/cz --allow-publish -y
+
+# 3. 打开 OIDC 开关，往后彻底免 token
+gh variable set NPM_OIDC --body true
+```
+
+#### 后续发布顺序（先开开关，再合并版本 PR）
 
 合并版本 PR 会消费 changeset、把版本改成 `0.1.0`。若此时发布开关还没打开，
 就没有东西再触发发布了。正确顺序：
@@ -230,16 +259,71 @@ gh variable set NPM_OIDC --body true   # 1. 先开开关（或 gh secret set NPM
   因此 `npm org` / `npm access` 这类命令要显式加 `--registry=https://registry.npmjs.org`，
   否则会打到镜像上得到误导性的 404（本项目 `.npmrc` 已把 `@excellence-wh` 钉到官方源）。
 
+#### 故障排查：发布/授权返回误导性的 404 / 403
+
+npm 注册表会把**权限和账号状态类错误伪装成 `404 Not found`**（官方 issue
+[npm/cli#9088](https://github.com/npm/cli/issues/9088)：*failures report misleading
+404 / ENEEDAUTH errors*）。实测过的三种形态：
+
+| 真实原因 | 表面症状 |
+| --- | --- |
+| 包不存在（`npm trust` / `npm stage publish` 的前置要求） | `404 … Package "X" not found` |
+| **账号处于安全冻结期** | 发布 → `404 Not found`；改 team 授权 → `403 {"error":"Forbidden"}` |
+| 2FA 未提供（这个是**诚实**的） | `401` + `www-authenticate: OTP` |
+
+**看穿伪装只有一个办法：拿下 2FA 挑战后看原始响应头**，里面会有
+`npm-notice` 直接写明原因：
+
+```text
+npm-notice: Your account has been temporarily suspended due to a recent
+            security-sensitive action.
+```
+
+最小复现（用 `npm login` 得到的会话 token 即可，无需 OTP）：
+
+```bash
+curl -i -X PUT "https://registry.npmjs.org/<scope>%2f<pkg>" \
+  -H "authorization: Bearer $(npm config get //registry.npmjs.org/:_authToken)" \
+  -H 'content-type: application/json' \
+  -d '{"_id":"<scope>/<pkg>","name":"<scope>/<pkg>","dist-tags":{"latest":"0.0.1"},"versions":{}}'
+```
+
+> 不带 OTP 时永远只看到 `401 www-authenticate: OTP`；带上有效 OTP 才会露出
+> 真正的 `404` / `403`。而 OTP 是一次性的，所以一个探测项要配一次验证。
+
+##### 常见真因：72 小时安全冻结期
+
+**用 recovery code 登录 npm（或其它安全敏感操作）会给账号加 72 小时安全冻结**，
+详见 <https://docs.npmjs.com/recovering-your-2fa-enabled-account>。
+
+- 冻结期内**可以**：登录、浏览/下载/安装包、改密码、添加新 2FA 方式
+- 冻结期内**不能**：❌ 发布/取消发布包 ❌ 创建 access token ❌ 改包设置或维护者
+  ❌ **改组织或 team 成员关系** ❌ 改账单/账号设置 ❌ 修改已有 2FA 方式
+- **"cannot be lifted early"** —— 联系支持也不能提前解除，只能等满 72 小时自动失效
+- 冻结起点可用 `GET /-/npm/v1/user` 的 `updated` 字段近似判断
+
+> **教训**：当 `404 Not found - PUT …` 出现而 token / org / 2FA 全部正常时，
+> **先怀疑账号状态，再怀疑配置**。用上面的 curl 拿 `npm-notice`，不要靠猜。
+> 本次事故里这个 404 让我们误判了三个小时（先后怀疑 token 类型、包名被占、
+> 组织 package grants 缺失）。
+
 ### 手动发布
 
 ```bash
 pnpm changeset          # 记录变更（选包 → semver → 说明）
 pnpm version-packages   # 升版本 + 写 CHANGELOG + 回写内部依赖范围
-pnpm release            # 构建 + 发布
+pnpm release            # 构建 + 发布（本地会弹浏览器 2FA；开关见下）
 ```
 
-> 开发机全局 registry 若指向镜像，发布会被拦。仓库根 `.npmrc` 已把
-> `@excellence-wh` 单独钉到 `registry.npmjs.org`，安装其余依赖仍走镜像。
+> `pnpm release` 在**本地终端**是可行的：pnpm 12 内置浏览器版 2FA 流程
+> （`withOtpHandling`），会自动打开验证页并轮询 `doneUrl`。CI 里则因为**没有 TTY**
+> 直接失败（`ERR_PNPM_OTP_NON_INTERACTIVE`）—— 这就是 CI 必须走 OIDC 的原因。
+
+> ⚠️ **`npm publish` 的项目配置根是「最近的 package.json」**，所以在
+> `packages/core/` 里直接 `npm publish` **不会**读取仓库根 `.npmrc`，会退回到
+> `~/.npmrc` 的镜像源并报 `ENEEDAUTH … registry.npmmirror.com`。
+> 用 pnpm 发布（会读 workspace 根 `.npmrc`）或显式加
+> `--registry=https://registry.npmjs.org/`。
 
 ### 发布产物自检
 
